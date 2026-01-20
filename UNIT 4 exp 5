@@ -1,0 +1,83 @@
+# Dynamic Pricing using Model-Based Reinforcement Learning
+# Web-compiler compatible (No sklearn)
+
+import numpy as np
+
+# -----------------------------
+# 1. Generate Historical Data
+# -----------------------------
+np.random.seed(42)
+
+samples = 500
+price = np.random.uniform(10, 50, samples)
+seasonality = np.random.uniform(0.9, 1.2, samples)
+competitor_price = np.random.uniform(10, 50, samples)
+
+# True demand function (unknown to agent)
+demand = (
+    300
+    - 4 * price
+    + 2 * competitor_price
+    + 60 * seasonality
+    + np.random.normal(0, 10, samples)
+)
+
+# Feature matrix (add bias term)
+X = np.column_stack((
+    np.ones(samples),
+    price,
+    seasonality,
+    competitor_price
+))
+y = demand
+
+# -----------------------------
+# 2. Train Demand Prediction Model
+# (Linear Regression from Scratch)
+# -----------------------------
+# Normal Equation: theta = (X^T X)^-1 X^T y
+theta = np.linalg.inv(X.T @ X) @ X.T @ y
+
+print("Demand prediction model trained.\n")
+
+# -----------------------------
+# 3. Environment Simulation
+# -----------------------------
+def predict_demand(price, seasonality, competitor_price):
+    features = np.array([1, price, seasonality, competitor_price])
+    return features @ theta
+
+def simulate(price, seasonality, competitor_price):
+    predicted_demand = predict_demand(price, seasonality, competitor_price)
+    revenue = price * max(predicted_demand, 0)
+    return revenue
+
+# -----------------------------
+# 4. Model-Based Policy Optimization
+# -----------------------------
+def find_optimal_price(seasonality, competitor_price):
+    prices = np.linspace(10, 50, 40)
+    best_price = prices[0]
+    best_revenue = 0
+
+    for p in prices:
+        revenue = simulate(p, seasonality, competitor_price)
+        if revenue > best_revenue:
+            best_revenue = revenue
+            best_price = p
+
+    return best_price, best_revenue
+
+# -----------------------------
+# 5. Run Dynamic Pricing Agent
+# -----------------------------
+current_seasonality = 1.1
+current_competitor_price = 30
+
+optimal_price, expected_revenue = find_optimal_price(
+    current_seasonality,
+    current_competitor_price
+)
+
+print("Optimal Price:", round(optimal_price, 2))
+print("Expected Revenue:", round(expected_revenue, 2))
