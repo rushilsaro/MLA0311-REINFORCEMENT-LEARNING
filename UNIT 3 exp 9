@@ -1,0 +1,59 @@
+# Dynamic Pricing using TRPO (Simplified, NumPy Only)
+
+import numpy as np
+
+# -----------------------------
+# 1. Environment Definition
+# -----------------------------
+prices = np.array([10, 15, 20, 25, 30])
+competitor_price = 22
+
+def demand(price):
+    return max(0, 100 - 3 * price + 2 * competitor_price)
+
+def reward(price):
+    return price * demand(price)
+
+# -----------------------------
+# 2. Policy Initialization
+# -----------------------------
+policy = np.ones(len(prices)) / len(prices)  # uniform policy
+learning_rate = 0.05
+kl_limit = 0.01
+
+# -----------------------------
+# 3. Training with TRPO
+# -----------------------------
+for episode in range(200):
+
+    # Sample action
+    action_idx = np.random.choice(len(prices), p=policy)
+    price = prices[action_idx]
+    r = reward(price)
+
+    # Estimate advantage (baseline = average reward)
+    baseline = np.mean([reward(p) for p in prices])
+    advantage = r - baseline
+
+    # Policy gradient
+    grad = np.zeros_like(policy)
+    grad[action_idx] = advantage / (policy[action_idx] + 1e-8)
+
+    # Proposed update
+    new_policy = policy + learning_rate * grad
+    new_policy = np.maximum(new_policy, 1e-8)
+    new_policy /= np.sum(new_policy)
+
+    # KL-divergence constraint
+    kl_div = np.sum(policy * np.log(policy / new_policy))
+
+    if kl_div < kl_limit:
+        policy = new_policy  # accept update
+
+# -----------------------------
+# 4. Output
+# -----------------------------
+print("Training completed.\n")
+print("Optimized Pricing Policy (Probability Distribution):")
+for p, prob in zip(prices, policy):
+    print(f"Price {p}: {round(prob, 3)}")
